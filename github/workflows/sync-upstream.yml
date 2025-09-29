@@ -1,0 +1,42 @@
+name: Sync fork from upstream
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 */6 * * *"  # every 6 hours
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout fork
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set Git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Add upstream remote
+        run: |
+          git remote add upstream https://github.com/gookie-dev/StepDaddyLiveHD.git
+          git fetch upstream
+
+      - name: Fast-forward master from upstream/master
+        run: |
+          git checkout master
+          # Try fast-forward. If it fails (diverged), fall back to reset (overwrites local changes).
+          if git merge --ff-only upstream/master; then
+            echo "Fast-forwarded."
+          else
+            echo "Not fast-forwardable; resetting to upstream/master."
+            git reset --hard upstream/master
+          fi
+
+      - name: Push to fork
+        run: git push origin master
